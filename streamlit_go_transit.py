@@ -20,6 +20,14 @@ from dotenv import load_dotenv
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
+# Configure Streamlit page
+st.set_page_config(
+    page_title="GO Transit Assistant",
+    page_icon="🚆",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 load_dotenv()  # Load environment variables from .env (e.g., OPENAI_API_KEY)
 
 # GO Transit MCP server URL
