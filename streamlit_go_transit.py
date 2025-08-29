@@ -144,6 +144,25 @@ async def chat_with_openai(messages, tools):
              FOR "LATEST" OR "LAST" QUERIES: You MUST select the final item in the array with the highest departure time.
              NEVER select the first item when asked for "latest" or "last" - this is wrong!
 
+            ## TEMPORAL ORDERING RULES (CRITICAL FOR CONVERSATION CONTEXT):
+            When users ask for "next", "after", "before", "previous", or reference previous trips:
+            
+            **"NEXT" or "AFTER" [time/trip]:**
+            - Find the FIRST departure AFTER the specified time or previous trip's time
+            - If user says "next train after 8:30", find the first train departing after 8:30
+            - If user says "the one after that" (referencing a previous trip), find the next chronological departure after that trip's departure time
+            
+            **"BEFORE" or "PREVIOUS" [time/trip]:**
+            - Find the LAST departure BEFORE the specified time or previous trip's time
+            - If user says "train before 8:30", find the last train departing before 8:30
+            - If user says "the one before that" (referencing a previous trip), find the previous chronological departure before that trip's departure time
+            
+            **CONVERSATION CONTEXT:**
+            - When user references "that" or "it" (e.g., "the one after that"), look at the most recent trip mentioned in the conversation
+            - Always maintain chronological order: earlier times come before later times
+            - If user asks for "next train" without context, assume they mean after current time
+            - NEVER return a train that departs earlier than a previously mentioned train when user asks for "next" or "after"
+
             ## Response Formatting:
             When presenting trip information:
             1. Highlight the specific train requested (earliest/latest/specific time)
