@@ -976,9 +976,9 @@ def sync_chat_response(messages, user_input):
                     # Get final response from OpenAI
                     final_response = await chat_with_openai(messages, tools)
                     messages.append(final_response)
-                    return final_response.content
+                    return final_response.content, messages
                 else:
-                    return response.content
+                    return response.content, messages
         
         except Exception as e:
             st.error(f"Failed to connect to GO Transit MCP server: {e}")
@@ -1022,9 +1022,9 @@ def sync_chat_response(messages, user_input):
                 
                 final_response = await chat_with_openai(messages, tools)
                 messages.append(final_response)
-                return final_response.content
+                return final_response.content, messages
             else:
-                return response.content
+                return response.content, messages
     
     return asyncio.run(_chat())
 
@@ -1039,6 +1039,8 @@ def main():
         st.session_state["history"] = []
     if "reset_counter" not in st.session_state:
         st.session_state["reset_counter"] = 0
+    if "input_submitted" not in st.session_state:
+        st.session_state["input_submitted"] = False
     
     # Reset button
     reset = st.button("Reset Chat")
@@ -1046,6 +1048,7 @@ def main():
         st.session_state["messages"] = []
         st.session_state["history"] = []
         st.session_state["reset_counter"] += 1  # Change the key to force input reset
+        st.session_state["input_submitted"] = False
         st.rerun()
     
     # Connection status and quick actions
@@ -1078,19 +1081,27 @@ def main():
         """)
     
     # Chat interface - use reset_counter in key to force reset
+    input_value = "" if st.session_state["input_submitted"] else None
     user_input = st.text_input("Ask about GO Transit:", 
                               key=f"user_input_{st.session_state['reset_counter']}", 
-                              placeholder="e.g., 'Find trains from Milton to Union Station tomorrow morning'")
+                              placeholder="e.g., 'Find trains from Milton to Union Station tomorrow morning'",
+                              value=input_value)
     
     if st.button("Send") and user_input:
         with st.spinner("Connecting to GO Transit server and searching..."):
             try:
-                response = sync_chat_response(st.session_state["messages"], user_input)
+                response, updated_messages = sync_chat_response(st.session_state["messages"], user_input)
+                st.session_state["messages"] = updated_messages  # Persist conversation context
                 st.session_state["history"].append((user_input, response))
+                st.session_state["input_submitted"] = True  # Flag to clear input
                 st.rerun()
             except Exception as e:
                 st.error("An error occurred:")
                 st.error(str(e))
+    
+    # Reset input_submitted flag after rerun
+    if st.session_state["input_submitted"]:
+        st.session_state["input_submitted"] = False
     
     # Display chat history
     st.header("Chat History")

@@ -1,9 +1,71 @@
 import csv
 import os
+import subprocess
 from datetime import datetime, timedelta
 
 # Get the directory where this script is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def extract_relevant_stop_times(trip_ids, file_path):
+    """
+    Extract only stop_times rows for specific trip_ids using grep for efficiency.
+    This avoids reading the entire 136MB file and only processes relevant rows.
+    """
+    if not trip_ids:
+        return {}
+    
+    try:
+        # Create grep pattern for the trip_ids
+        trip_pattern = '|'.join(trip_ids)
+        
+        # Use grep to extract only relevant rows
+        result = subprocess.run(
+            ['grep', '-E', f'^({trip_pattern}),', file_path],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        
+        # Parse the filtered results
+        stop_times = {}
+        for line in result.stdout.strip().split('\n'):
+            if line:
+                parts = line.split(',')
+                if len(parts) >= 3:
+                    trip_id = parts[0]
+                    stop_id = parts[1]
+                    departure_time = parts[2]
+                    
+                    if trip_id not in stop_times:
+                        stop_times[trip_id] = {}
+                    stop_times[trip_id][stop_id] = departure_time
+        
+        return stop_times
+        
+    except subprocess.CalledProcessError:
+        # Fallback to original method if grep fails
+        return extract_relevant_stop_times_fallback(trip_ids, file_path)
+    except Exception:
+        # Fallback to original method for any other error
+        return extract_relevant_stop_times_fallback(trip_ids, file_path)
+
+def extract_relevant_stop_times_fallback(trip_ids, file_path):
+    """
+    Fallback method that reads the entire file if grep optimization fails.
+    This ensures functionality is never broken.
+    """
+    trip_ids_set = set(trip_ids)
+    stop_times = {}
+    
+    with open(file_path, 'r', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row['trip_id'] in trip_ids_set:
+                if row['trip_id'] not in stop_times:
+                    stop_times[row['trip_id']] = {}
+                stop_times[row['trip_id']][row['stop_id']] = row['departure_time']
+    
+    return stop_times
 
 def findTrip(when, from_location, to_location):
     today = datetime.now().date()
@@ -45,14 +107,9 @@ def findTrip(when, from_location, to_location):
 
         all_trips = []
 
-        with open(os.path.join(BASE_DIR, 'GO-GTFS/stop_times.txt'), 'r', encoding='utf-8-sig') as f:
-            reader = csv.DictReader(f)
-            stop_times = {}
-            for row in reader:
-                if row['trip_id'] in trips:
-                    if row['trip_id'] not in stop_times:
-                        stop_times[row['trip_id']] = {}
-                    stop_times[row['trip_id']][row['stop_id']] = row['departure_time']
+        # OPTIMIZED: Use selective reading instead of reading entire 136MB file
+        stop_times_file = os.path.join(BASE_DIR, 'GO-GTFS/stop_times.txt')
+        stop_times = extract_relevant_stop_times(trips, stop_times_file)
 
         for trip_id, times in stop_times.items():
             if from_id in times and to_id in times:
