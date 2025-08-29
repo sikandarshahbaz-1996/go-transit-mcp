@@ -1117,11 +1117,9 @@ def main():
     st.header("Ask about your GO Transit trip")
     
     # Input field and buttons on same line
-    input_value = "" if st.session_state["input_submitted"] else None
     user_input = st.text_input("", 
                               key=f"user_input_{st.session_state['reset_counter']}", 
-                              placeholder="e.g., 'Find trains from Milton to Union Station tomorrow morning'",
-                              value=input_value)
+                              placeholder="e.g., 'Find trains from Milton to Union Station tomorrow morning'")
     
     # Buttons on same line
     col1, col2 = st.columns([1, 1])
@@ -1134,7 +1132,6 @@ def main():
         st.session_state["messages"] = []
         st.session_state["history"] = []
         st.session_state["reset_counter"] += 1  # Change the key to force input reset
-        st.session_state["input_submitted"] = False
         st.rerun()
     
     if send_button and user_input:
@@ -1143,15 +1140,11 @@ def main():
                 response, updated_messages = sync_chat_response(st.session_state["messages"], user_input)
                 st.session_state["messages"] = updated_messages  # Persist conversation context
                 st.session_state["history"].append((user_input, response))
-                st.session_state["input_submitted"] = True  # Flag to clear input
+                st.session_state["reset_counter"] += 1  # Force input field to reset
                 st.rerun()
             except Exception as e:
                 st.error("An error occurred:")
                 st.error(str(e))
-    
-    # Reset input_submitted flag after rerun
-    if st.session_state["input_submitted"]:
-        st.session_state["input_submitted"] = False
 
 def run_streamlit():
     main()
