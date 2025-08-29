@@ -15,10 +15,10 @@ def extract_relevant_stop_times(trip_ids, file_path):
         return {}
     
     try:
-        # Create grep pattern for the trip_ids
-        trip_pattern = '|'.join(trip_ids)
+        # Create grep pattern for the trip_ids (escape special characters)
+        trip_pattern = '|'.join([trip_id.replace('-', '\\-') for trip_id in trip_ids])
         
-        # Use grep to extract only relevant rows
+        # Use grep to extract only relevant rows (skip header, match trip_id at start)
         result = subprocess.run(
             ['grep', '-E', f'^({trip_pattern}),', file_path],
             capture_output=True,
@@ -26,15 +26,15 @@ def extract_relevant_stop_times(trip_ids, file_path):
             check=True
         )
         
-        # Parse the filtered results
+        # Parse the filtered results using CSV format
         stop_times = {}
         for line in result.stdout.strip().split('\n'):
-            if line:
+            if line and not line.startswith('trip_id'):  # Skip header if present
                 parts = line.split(',')
-                if len(parts) >= 3:
+                if len(parts) >= 4:  # trip_id,arrival_time,departure_time,stop_id,...
                     trip_id = parts[0]
-                    stop_id = parts[1]
-                    departure_time = parts[2]
+                    departure_time = parts[2]  # departure_time is 3rd column
+                    stop_id = parts[3]         # stop_id is 4th column
                     
                     if trip_id not in stop_times:
                         stop_times[trip_id] = {}
@@ -45,8 +45,9 @@ def extract_relevant_stop_times(trip_ids, file_path):
     except subprocess.CalledProcessError:
         # Fallback to original method if grep fails
         return extract_relevant_stop_times_fallback(trip_ids, file_path)
-    except Exception:
+    except Exception as e:
         # Fallback to original method for any other error
+        print(f"Grep optimization failed, using fallback: {e}")
         return extract_relevant_stop_times_fallback(trip_ids, file_path)
 
 def extract_relevant_stop_times_fallback(trip_ids, file_path):
