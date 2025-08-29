@@ -2,6 +2,8 @@ from mcp.server.fastmcp import FastMCP
 from functions import findTrip, calculate_fare
 from pydantic import BaseModel, Field
 from typing import List
+from datetime import datetime
+import pytz
 
 mcp = FastMCP("Go Transit", host="0.0.0.0", port=8000)
 
@@ -42,6 +44,27 @@ def get_fare(fare_request: FareRequest) -> dict | None:
     """
 
     return calculate_fare(fare_request.from_location, fare_request.to_location)
+
+@mcp.tool()
+def get_current_datetime() -> dict:
+    """
+    Get the current date and time in Eastern Time (EST/EDT).
+    
+    Returns:
+        dict: Current datetime information including day of week, date, time, and timezone
+    """
+    # Eastern timezone (handles EST/EDT automatically)
+    eastern = pytz.timezone('America/Toronto')
+    now = datetime.now(eastern)
+    
+    return {
+        "current_datetime": now.strftime("%A, %B %d, %Y at %I:%M %p %Z"),
+        "day_of_week": now.strftime("%A"),
+        "date": now.strftime("%Y-%m-%d"),
+        "time": now.strftime("%I:%M %p"),
+        "timezone": str(now.tzinfo),
+        "iso_format": now.isoformat()
+    }
 
 if __name__ == "__main__":
     mcp.run(transport="streamable-http")
