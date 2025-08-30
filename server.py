@@ -1,5 +1,5 @@
 from mcp.server.fastmcp import FastMCP
-from functions import findTrip, getStations
+from functions import findTrip, getStations, getFare
 from pydantic import BaseModel, Field
 from typing import List
 from datetime import datetime
@@ -14,12 +14,16 @@ class Trip(BaseModel):
     time: str = Field(description="Time in HHMM format (e.g., '0700' for 7:00 AM, '1430' for 2:30 PM)", default="0700")
     max_results: str = Field(description="Maximum number of results to return", default="20")
 
+class FareRequest(BaseModel):
+    from_station: str = Field(description="Origin station code (e.g., 'ML' for Milton, 'UN' for Union Station)")
+    to_station: str = Field(description="Destination station code (e.g., 'ML' for Milton, 'UN' for Union Station)")
+
 @mcp.tool()
 def get_stations() -> dict | None:
     """
     Retrieves the complete list of all GO Transit stations, bus stops, and transit hubs.
     
-    This tool should be called first before using find_trip() to get the correct station codes.
+    This tool should be called first before using find_trip() or get_fare() to get the correct station codes.
     The response includes LocationCode (station code), LocationName (full name), and LocationType.
     
     Returns:
@@ -76,6 +80,49 @@ def find_trip(trip: Trip) -> dict | None:
             to_station=trip.to_station,
             time=trip.time,
             max_results=trip.max_results
+        )
+    except Exception as e:
+        return None
+
+@mcp.tool()
+def get_fare(fare_request: FareRequest) -> dict | None:
+    """
+    Gets the fare information between two GO Transit locations.
+    
+    WORKFLOW:
+    1. First call get_stations() to get the complete station list
+    2. Use the returned station codes in this get_fare() call
+    
+    Example workflow:
+    - User asks: "What's the fare from Toronto to Hamilton?"
+    - You call: get_stations() 
+    - You find: Union Station (UN), Hamilton GO Centre (HA)
+    - You call: get_fare(from_station="UN", to_station="HA")
+    
+    Common station examples:
+    - Union Station (UN)
+    - Milton GO (ML) 
+    - Oakville GO (OA)
+    - Burlington GO (BU)
+    - Hamilton GO Centre (HA)
+    - Brampton GO (BR)
+    - Mississauga GO (MI)
+    - Georgetown GO (GE)
+    - Kitchener GO (KI)
+    - Guelph Central GO (GL)
+    
+    Args:
+        - from_station: Origin station code (e.g., 'ML' for Milton, 'UN' for Union Station)
+        - to_station: Destination station code (e.g., 'ML' for Milton, 'UN' for Union Station)
+
+    Returns:
+        dict | None: Complete API response with fare information including metadata and all fare categories. 
+        Returns None if no fares found or error occurs.
+    """
+    try:
+        return getFare(
+            from_station=fare_request.from_station,
+            to_station=fare_request.to_station
         )
     except Exception as e:
         return None

@@ -68,3 +68,32 @@ def getStations():
     except Exception as e:
         raise Exception(f"Unexpected error: {str(e)}")
 
+
+def getFare(from_station, to_station):
+    api_key = os.getenv('METROLINX_API_KEY')
+    
+    if not api_key:
+        raise ValueError("METROLINX_API_KEY not found in environment variables")
+    
+    endpoint = f"Fares/{from_station}/{to_station}"
+    url = f"{BASE_URL}{endpoint}?key={api_key}"
+    
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        
+        data = response.json()
+        
+        if data.get('Metadata', {}).get('ErrorCode') == '200':
+            return data
+        else:
+            error_msg = data.get('Metadata', {}).get('ErrorMessage', 'Unknown error')
+            raise Exception(f"API Error: {error_msg}")
+            
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Request failed: {str(e)}")
+    except ValueError as e:
+        raise Exception(f"Invalid JSON response: {str(e)}")
+    except Exception as e:
+        raise Exception(f"Unexpected error: {str(e)}")
+
