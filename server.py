@@ -1,5 +1,5 @@
 from mcp.server.fastmcp import FastMCP
-from functions import findTrip, getStations, getFare
+from functions import findTrip, getStations, getFare, findTripWithRealTime
 from pydantic import BaseModel, Field
 from typing import List
 from datetime import datetime
@@ -39,6 +39,7 @@ def get_stations() -> dict | None:
 def find_trip(trip: Trip) -> dict | None:
     """
     Gets the trip information for a given date and time between two GO Transit locations.
+    This enhanced version includes real-time status information such as delays, cancellations, and service alerts.
     
     WORKFLOW:
     1. First call get_stations() to get the complete station list
@@ -62,6 +63,12 @@ def find_trip(trip: Trip) -> dict | None:
     - Kitchener GO (KI)
     - Guelph Central GO (GL)
     
+    REAL-TIME FEATURES:
+    - Automatic delay detection and reporting
+    - Cancellation notifications
+    - Service alert integration
+    - Real-time departure/arrival updates
+    
     Args:
         - date: Date in YYYYMMDD format (e.g., '20250902' for September 2, 2025)
         - from_station: Origin station code (e.g., 'ML' for Milton, 'UN' for Union Station)
@@ -70,11 +77,12 @@ def find_trip(trip: Trip) -> dict | None:
         - max_results: Maximum number of results to return
 
     Returns:
-        dict | None: Complete API response with trip details including metadata and scheduled journeys. 
+        dict | None: Complete API response with trip details including metadata, scheduled journeys, 
+        and real-time status information (delays, cancellations, alerts). 
         Returns None if no trips found or error occurs.
     """
     try:
-        return findTrip(
+        return findTripWithRealTime(
             date=trip.date,
             from_station=trip.from_station,
             to_station=trip.to_station,
