@@ -1,49 +1,85 @@
 from mcp.server.fastmcp import FastMCP
-from functions import findTrip, calculate_fare
+from functions import findTrip, getStations
 from pydantic import BaseModel, Field
 from typing import List
 from datetime import datetime
 import pytz
 
-mcp = FastMCP("Go Transit", host="0.0.0.0", port=8000)
+mcp = FastMCP("Go Transit")
 
 class Trip(BaseModel):
-    when: str = Field(description="The day of the week to find a trip for")
-    from_location: str = Field(description="The location to start the trip from (GO station, bus stop, or transit hub)")
-    to_location: str = Field(description="The location to end the trip at (GO station, bus stop, or transit hub)")
+    date: str = Field(description="Date in YYYYMMDD format (e.g., '20250902' for September 2, 2025)")
+    from_station: str = Field(description="Origin station code (e.g., 'ML' for Milton, 'UN' for Union Station)")
+    to_station: str = Field(description="Destination station code (e.g., 'ML' for Milton, 'UN' for Union Station)")
+    time: str = Field(description="Time in HHMM format (e.g., '0700' for 7:00 AM, '1430' for 2:30 PM)", default="0700")
+    max_results: str = Field(description="Maximum number of results to return", default="20")
 
 @mcp.tool()
-def find_trip(trip: Trip) -> list[dict] | None:
+def get_stations() -> dict | None:
     """
-    Gets the trip information for a given day between two GO Transit locations.
-    Args:
-        - when: The day of the week to find a trip for.
-        - from_location: The location to start the trip from (GO station, bus stop, or transit hub).
-        - to_location: The location to end the trip at (GO station, bus stop, or transit hub).
-
+    Retrieves the complete list of all GO Transit stations, bus stops, and transit hubs.
+    
+    This tool should be called first before using find_trip() to get the correct station codes.
+    The response includes LocationCode (station code), LocationName (full name), and LocationType.
+    
     Returns:
-        list[dict] | None: List of all trip details for the day, sorted by departure time. None if no trips found.
+        dict | None: Complete list of all stations with their codes and names. 
+        Returns None if error occurs.
     """
-
-    return findTrip(trip.when, trip.from_location, trip.to_location)
-
-class FareRequest(BaseModel):
-    from_location: str = Field(description="The origin location name (GO station, bus stop, or transit hub)")
-    to_location: str = Field(description="The destination location name (GO station, bus stop, or transit hub)")
+    try:
+        return getStations()
+    except Exception as e:
+        return None
 
 @mcp.tool()
-def get_fare(fare_request: FareRequest) -> dict | None:
+def find_trip(trip: Trip) -> dict | None:
     """
-    Calculate the fare between two GO Transit locations.
+    Gets the trip information for a given date and time between two GO Transit locations.
+    
+    WORKFLOW:
+    1. First call get_stations() to get the complete station list
+    2. Use the returned station codes in this find_trip() call
+    
+    Example workflow:
+    - User asks: "Find trips from Toronto to Hamilton"
+    - You call: get_stations() 
+    - You find: Union Station (UN), Hamilton GO Centre (HA)
+    - You call: find_trip(date="20250902", from_station="UN", to_station="HA", time="0700")
+    
+    Common station examples:
+    - Union Station (UN)
+    - Milton GO (ML) 
+    - Oakville GO (OA)
+    - Burlington GO (BU)
+    - Hamilton GO Centre (HA)
+    - Brampton GO (BR)
+    - Mississauga GO (MI)
+    - Georgetown GO (GE)
+    - Kitchener GO (KI)
+    - Guelph Central GO (GL)
+    
     Args:
-        - from_location: The origin location name (GO station, bus stop, or transit hub)
-        - to_location: The destination location name (GO station, bus stop, or transit hub)
+        - date: Date in YYYYMMDD format (e.g., '20250902' for September 2, 2025)
+        - from_station: Origin station code (e.g., 'ML' for Milton, 'UN' for Union Station)
+        - to_station: Destination station code (e.g., 'ML' for Milton, 'UN' for Union Station)
+        - time: Time in HHMM format (e.g., '0700' for 7:00 AM, '1430' for 2:30 PM)
+        - max_results: Maximum number of results to return
 
     Returns:
-        dict | None: Fare details including price, currency, and zones. None if locations not found.
+        dict | None: Complete API response with trip details including metadata and scheduled journeys. 
+        Returns None if no trips found or error occurs.
     """
+    try:
+        return findTrip(
+            date=trip.date,
+            from_station=trip.from_station,
+            to_station=trip.to_station,
+            time=trip.time,
+            max_results=trip.max_results
+        )
+    except Exception as e:
+        return None
 
-    return calculate_fare(fare_request.from_location, fare_request.to_location)
 
 @mcp.tool()
 def get_current_datetime() -> dict:
@@ -67,4 +103,4 @@ def get_current_datetime() -> dict:
     }
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http")
+    mcp.run()
