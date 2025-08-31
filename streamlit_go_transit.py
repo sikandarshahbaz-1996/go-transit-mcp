@@ -33,7 +33,7 @@ st.set_page_config(
 load_dotenv()  # Load environment variables from .env (e.g., ANTHROPIC_KEY)
 
 # GO Transit MCP server URL
-server_url = "http://0.0.0.0:8000/mcp/"
+server_url = "http://157.245.115.181:8000/mcp/"
 
 # Check if API key is loaded
 api_key = os.getenv('ANTHROPIC_KEY')
