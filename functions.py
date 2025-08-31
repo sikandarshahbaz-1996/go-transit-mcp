@@ -56,7 +56,19 @@ def getStations():
         data = response.json()
         
         if data.get('Metadata', {}).get('ErrorCode') == '200':
-            return data
+            # Transform the JSON response into comma-separated string format
+            stations = data.get('Stations', {}).get('Station', [])
+            
+            # Build comma-separated string with station names and codes
+            station_list = []
+            for station in stations:
+                location_name = station.get('LocationName', '')
+                location_code = station.get('LocationCode', '')
+                if location_name and location_code:
+                    station_list.append(f"{location_name} - {location_code}")
+            
+            # Join all stations with commas
+            return ", ".join(station_list)
         else:
             error_msg = data.get('Metadata', {}).get('ErrorMessage', 'Unknown error')
             raise Exception(f"API Error: {error_msg}")

@@ -24,10 +24,10 @@ def get_stations() -> dict | None:
     Retrieves the complete list of all GO Transit stations, bus stops, and transit hubs.
     
     This tool should be called first before using find_trip() or get_fare() to get the correct station codes.
-    The response includes LocationCode (station code), LocationName (full name), and LocationType.
+    The response is a simple comma-separated string with station names and codes.
     
     Returns:
-        dict | None: Complete list of all stations with their codes and names. 
+        str | None: Comma-separated string of stations in format "Station Name - StationCode, Another Station - AnotherCode".
         Returns None if error occurs.
     """
     try:
